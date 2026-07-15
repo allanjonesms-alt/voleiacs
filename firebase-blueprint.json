@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "Athlete": {
+      "title": "Athlete",
+      "description": "Athlete in the system",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "wins": { "type": "number" },
+        "losses": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "birthDate": { "type": "string", "description": "Date of birth of the athlete (YYYY-MM-DD)" }
+      }
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin user",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Volleyball match",
+      "type": "object",
+      "properties": {
+        "date": { "type": "number" },
+        "blueTeam": { "type": "array" },
+        "yellowTeam": { "type": "array" },
+        "blueScore": { "type": "number" },
+        "yellowScore": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "Config": {
+      "title": "Config",
+      "description": "Application configuration",
+      "type": "object",
+      "properties": {
+        "athleteIds": { "type": "array", "description": "List of athlete IDs present today" }
+      }
+    }
+  },
+  "firestore": {
+    "athletes/{athleteId}": {
+      "schema": "Athlete",
+      "description": "Athletes collection"
+    },
+    "admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Admins collection"
+    },
+    "matches/{matchId}": {
+      "schema": "Match",
+      "description": "Matches collection"
+    },
+    "config/{configId}": {
+      "schema": "Config",
+      "description": "Global config collections"
+    }
+  }
+}
