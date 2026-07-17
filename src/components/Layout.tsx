@@ -7,7 +7,7 @@ import { Volleyball, ShieldAlert, LogOut, LogIn, Users } from 'lucide-react';
 
 export default function Layout() {
   const { user, isAdmin, loading } = useAuth();
-  const { showAlert } = useDialog();
+  const { showAlert, showConfirm } = useDialog();
   const navigate = useNavigate();
 
   const handleLogin = async () => {
@@ -20,6 +20,12 @@ export default function Layout() {
         errorMessage.includes("auth/unauthorized-domain") || 
         error?.code === "auth/unauthorized-domain";
 
+      const isPopupError = 
+        errorMessage.includes("auth/cancelled-popup-request") ||
+        errorMessage.includes("auth/popup-blocked") ||
+        error?.code === "auth/cancelled-popup-request" ||
+        error?.code === "auth/popup-blocked";
+
       if (isUnauthorizedDomain) {
         const currentDomain = window.location.hostname;
         const currentOrigin = window.location.origin;
@@ -28,6 +34,15 @@ export default function Layout() {
           "Domínio Não Autorizado no Firebase",
           "warning"
         );
+      } else if (isPopupError) {
+        const confirmOpen = await showConfirm(
+          `A janela de login do Google foi bloqueada ou cancelada pelo navegador.\n\nIsso ocorre frequentemente porque o aplicativo está sendo executado dentro de um painel (iframe) do AI Studio.\n\nDeseja abrir o aplicativo diretamente em uma nova aba para fazer o login de administrador com segurança?`,
+          "Janela de Login Bloqueada",
+          "warning"
+        );
+        if (confirmOpen) {
+          window.open(window.location.href, "_blank");
+        }
       } else {
         await showAlert(`Erro ao fazer login: ${errorMessage}`, "Erro de Autenticação", "danger");
       }
