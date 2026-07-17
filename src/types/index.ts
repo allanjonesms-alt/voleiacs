@@ -28,4 +28,5 @@ export interface Match {
   yellowTiebreakScore?: number;
   status: 'scheduled' | 'in_progress' | 'completed';
   createdAt: number;
+  matchNumber?: number;
 }

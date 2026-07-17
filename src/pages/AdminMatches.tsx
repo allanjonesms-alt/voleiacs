@@ -7,6 +7,163 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useDialog } from '../contexts/DialogContext';
+import { getLocalDate } from '../lib/utils';
+
+function AthleteAutocomplete({
+  selectedId,
+  onChange,
+  athletes,
+  dailyAthleteIds,
+}: {
+  selectedId: string;
+  onChange: (id: string) => void;
+  athletes: Athlete[];
+  dailyAthleteIds: string[];
+}) {
+  const selectedAthlete = athletes.find(a => a.id === selectedId);
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const showSearchInput = !selectedAthlete || isEditing;
+  const dailyAthletes = athletes.filter(a => dailyAthleteIds.includes(a.id));
+  const filteredOptions = dailyAthletes.filter(a => {
+    if (!search.trim()) return true;
+    return a.name.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const handleSelect = (athleteId: string) => {
+    onChange(athleteId);
+    setSearch('');
+    setIsOpen(false);
+    setIsEditing(false);
+  };
+
+  const handleRemove = () => {
+    onChange('');
+    setSearch('');
+    setIsEditing(false);
+  };
+
+  const handleReplaceClick = () => {
+    setIsEditing(true);
+    setIsOpen(true);
+  };
+
+  const handleCancelEditing = () => {
+    setIsEditing(false);
+    setIsOpen(false);
+    setSearch('');
+  };
+
+  if (showSearchInput) {
+    return (
+      <div ref={dropdownRef} className="relative w-full">
+        <div className="relative flex items-center">
+          <input
+            type="text"
+            placeholder={selectedAthlete ? `Substituir ${selectedAthlete.name}...` : "Buscar atleta..."}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-8 py-1.5 bg-gray-50 hover:bg-gray-100 font-medium transition-colors focus:ring-1 focus:ring-indigo-500 focus:bg-white outline-none"
+          />
+          <Search className="absolute left-2.5 h-3.5 w-3.5 text-gray-400" />
+          {selectedAthlete && (
+            <button
+              type="button"
+              onClick={handleCancelEditing}
+              className="absolute right-2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full"
+              title="Cancelar substituição"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto divide-y divide-gray-100">
+            {filteredOptions.length === 0 ? (
+              <div className="p-2 text-center text-xs text-gray-500 italic">
+                Nenhum atleta presente encontrado
+              </div>
+            ) : (
+              filteredOptions.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => handleSelect(a.id)}
+                  className="w-full flex items-center gap-2 p-2 hover:bg-slate-50 transition-colors text-left"
+                >
+                  {a.photoUrl ? (
+                    <img src={a.photoUrl} className="w-5 h-5 rounded-full object-cover border border-gray-100" alt="" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-[9px] font-bold">
+                      {a.name.charAt(0)}
+                    </div>
+                  )}
+                  <span className="text-xs font-semibold text-gray-700 truncate">{a.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between bg-slate-50/50 hover:bg-slate-50 border border-slate-100 p-1.5 rounded-xl transition-all">
+      <div className="flex items-center gap-2 truncate">
+        {selectedAthlete.photoUrl ? (
+          <img src={selectedAthlete.photoUrl} className="w-7 h-7 rounded-full object-cover border border-gray-200 shadow-2xs" alt="" />
+        ) : (
+          <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold shadow-sm">
+            {selectedAthlete.name.charAt(0)}
+          </div>
+        )}
+        <div className="truncate">
+          <p className="text-xs font-extrabold text-gray-800 truncate leading-snug">{selectedAthlete.name}</p>
+          <p className="text-[9px] text-gray-400 font-bold leading-none">Atleta escalado</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+        <button
+          type="button"
+          onClick={handleReplaceClick}
+          className="px-2 py-1 text-[10px] font-bold bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg transition-all flex items-center gap-0.5 shadow-3xs cursor-pointer"
+          title="Substituir por outro atleta"
+        >
+          <RefreshCw className="h-2.5 w-2.5" />
+          Substituir
+        </button>
+        <button
+          type="button"
+          onClick={handleRemove}
+          className="p-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-lg transition-all cursor-pointer"
+          title="Remover atleta"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminMatches() {
   const { showAlert, showConfirm } = useDialog();
@@ -83,9 +240,24 @@ export default function AdminMatches() {
   }, []);
 
   useEffect(() => {
-    const unsubDaily = onSnapshot(doc(db, 'config', 'present_athletes'), (docSnap) => {
+    const unsubDaily = onSnapshot(doc(db, 'config', 'present_athletes'), async (docSnap) => {
       if (docSnap.exists()) {
-        setDailyAthleteIds(docSnap.data().athleteIds || []);
+        const data = docSnap.data();
+        const athleteIds = data.athleteIds || [];
+        const updatedAt = data.updatedAt || 0;
+        const now = Date.now();
+        if (athleteIds.length > 0 && updatedAt && now - updatedAt > 24 * 60 * 60 * 1000) {
+          try {
+            await setDoc(doc(db, 'config', 'present_athletes'), {
+              athleteIds: [],
+              updatedAt: Date.now()
+            });
+          } catch (err) {
+            console.error('Erro ao expirar lista de presença após 24h:', err);
+          }
+        } else {
+          setDailyAthleteIds(athleteIds);
+        }
       } else {
         setDailyAthleteIds([]);
       }
@@ -113,6 +285,17 @@ export default function AdminMatches() {
     return () => unsubNextTeams();
   }, []);
 
+  const saveDailyAthletes = async (newIds: string[]) => {
+    try {
+      await setDoc(doc(db, 'config', 'present_athletes'), {
+        athleteIds: newIds,
+        updatedAt: Date.now()
+      });
+    } catch (err) {
+      console.error('Erro ao salvar atletas do dia:', err);
+    }
+  };
+
   const resetForm = () => {
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setBlueTeam([]);
@@ -130,7 +313,7 @@ export default function AdminMatches() {
       showAlert('Não é permitido editar uma partida concluída diretamente. Por favor, reabra a partida primeiro através da tela do Placar para que as estatísticas dos atletas sejam revertidas com segurança.', 'Atenção', 'warning');
       return;
     }
-    setDate(format(new Date(match.date), 'yyyy-MM-dd'));
+    setDate(format(getLocalDate(match.date), 'yyyy-MM-dd'));
     setBlueTeam(match.blueTeam);
     setYellowTeam(match.yellowTeam);
     setEditingId(match.id);
@@ -166,18 +349,20 @@ export default function AdminMatches() {
       if (editingId) {
         await updateDoc(doc(db, 'matches', editingId), data);
       } else {
+        const nextMatchNumber = matches.reduce((max, m) => Math.max(max, m.matchNumber || 0), 0) + 1;
         await addDoc(collection(db, 'matches'), {
           ...data,
           blueScore: 0,
           yellowScore: 0,
           status: 'scheduled',
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          matchNumber: nextMatchNumber
         });
 
         // Rotate leaving athletes to the end of the presence list
         const completedMatchesOfToday = matches
           .filter(m => {
-            const mDateStr = format(new Date(m.date), 'yyyy-MM-dd');
+            const mDateStr = format(getLocalDate(m.date), 'yyyy-MM-dd');
             return mDateStr === date && m.status === 'completed';
           })
           .sort((a, b) => a.createdAt - b.createdAt);
@@ -191,11 +376,7 @@ export default function AdminMatches() {
             const filtered = dailyAthleteIds.filter(id => !leftAthletes.includes(id));
             const newDailyIds = [...filtered, ...leftAthletes];
             setDailyAthleteIds(newDailyIds);
-            try {
-              await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: newDailyIds });
-            } catch (err) {
-              console.error('Erro ao rotacionar atletas que saíram:', err);
-            }
+            await saveDailyAthletes(newDailyIds);
           }
         }
       }
@@ -240,11 +421,7 @@ export default function AdminMatches() {
     if (dailyAthleteIds.includes(athleteId)) return;
     const newIds = [...dailyAthleteIds, athleteId];
     setDailyAthleteIds(newIds);
-    try {
-      await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: newIds });
-    } catch (err) {
-      console.error('Erro ao adicionar atleta do dia:', err);
-    }
+    await saveDailyAthletes(newIds);
     setDailySearch('');
     setIsDailyDropdownOpen(false);
   };
@@ -252,11 +429,7 @@ export default function AdminMatches() {
   const removeDailyAthlete = async (athleteId: string) => {
     const newIds = dailyAthleteIds.filter(id => id !== athleteId);
     setDailyAthleteIds(newIds);
-    try {
-      await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: newIds });
-    } catch (err) {
-      console.error('Erro ao remover atleta do dia:', err);
-    }
+    await saveDailyAthletes(newIds);
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -279,11 +452,7 @@ export default function AdminMatches() {
 
   const handleDragEnd = async () => {
     setDraggedIndex(null);
-    try {
-      await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: dailyAthleteIds });
-    } catch (err) {
-      console.error('Erro ao salvar reordenação:', err);
-    }
+    await saveDailyAthletes(dailyAthleteIds);
   };
 
   const moveAthlete = async (index: number, direction: 'up' | 'down') => {
@@ -296,11 +465,7 @@ export default function AdminMatches() {
     newIds[targetIndex] = temp;
     
     setDailyAthleteIds(newIds);
-    try {
-      await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: newIds });
-    } catch (err) {
-      console.error('Erro ao salvar reordenação:', err);
-    }
+    await saveDailyAthletes(newIds);
   };
 
   const rotateDailyQueue = async (count: number) => {
@@ -310,11 +475,7 @@ export default function AdminMatches() {
     const newIds = [...remaining, ...toRotate];
     
     setDailyAthleteIds(newIds);
-    try {
-      await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: newIds });
-    } catch (err) {
-      console.error('Erro ao rotacionar fila:', err);
-    }
+    await saveDailyAthletes(newIds);
   };
 
   const scaleNextSix = async () => {
@@ -399,11 +560,11 @@ export default function AdminMatches() {
     }
   };
 
-  const startNextMatchWithTeam1 = async () => {
-    const team1 = nextTeams[0] || [];
-    const validPlayers = team1.filter(id => id);
+  const startNextMatchWithTeam = async (teamIdx: number) => {
+    const team = nextTeams[teamIdx] || [];
+    const validPlayers = team.filter(id => id);
     if (validPlayers.length !== 3) {
-      await showAlert('A Próxima Equipe #1 precisa ter exatamente 3 atletas escalados para iniciar a partida.', 'Atenção', 'warning');
+      await showAlert(`A Próxima Equipe #${teamIdx + 1} precisa ter exatamente 3 atletas escalados para iniciar a partida.`, 'Atenção', 'warning');
       return;
     }
 
@@ -412,7 +573,7 @@ export default function AdminMatches() {
     // Find last completed match of today
     const completedMatchesOfToday = matches
       .filter(m => {
-        const mDateStr = format(new Date(m.date), 'yyyy-MM-dd');
+        const mDateStr = format(getLocalDate(m.date), 'yyyy-MM-dd');
         return mDateStr === selectedDateStr && m.status === 'completed';
       })
       .sort((a, b) => a.createdAt - b.createdAt);
@@ -422,17 +583,20 @@ export default function AdminMatches() {
     let blueTeamSelected: string[] = [];
     let yellowTeamSelected: string[] = [];
     let isTwoTeamsConsumed = false;
+    let otherTeamIdx = -1;
 
     if (isFirstMatch) {
-      // First match of the day: Team 1 vs Team 2
-      const team2 = nextTeams[1] || [];
-      const team2Valid = team2.filter(id => id);
-      if (team2Valid.length !== 3) {
-        await showAlert('Como esta é a primeira partida de hoje, as equipes #1 e #2 se enfrentarão. A Próxima Equipe #2 também precisa ter exatamente 3 atletas escalados.', 'Atenção', 'info');
+      // First match of the day: Selected team plays against another team in nextTeams.
+      // If teamIdx is 0, play against teamIdx 1. Otherwise play against teamIdx 0.
+      otherTeamIdx = teamIdx === 0 ? 1 : 0;
+      const otherTeam = nextTeams[otherTeamIdx] || [];
+      const otherTeamValid = otherTeam.filter(id => id);
+      if (otherTeamValid.length !== 3) {
+        await showAlert(`Como esta é a primeira partida de hoje, as equipes #${teamIdx + 1} e #${otherTeamIdx + 1} se enfrentarão. A Próxima Equipe #${otherTeamIdx + 1} também precisa ter exatamente 3 atletas escalados.`, 'Atenção', 'info');
         return;
       }
       blueTeamSelected = validPlayers;
-      yellowTeamSelected = team2Valid;
+      yellowTeamSelected = otherTeamValid;
       isTwoTeamsConsumed = true;
     } else {
       const isSameTeam = (teamA: string[], teamB: string[]) => {
@@ -491,19 +655,20 @@ export default function AdminMatches() {
       }
 
       blueTeamSelected = remainingTeam;
-      yellowTeamSelected = validPlayers; // Equipe #1
+      yellowTeamSelected = validPlayers; // Selected team
 
       const winnerNames = remainingTeam.map(id => athletes.find(a => a.id === id)?.name || id).join(', ');
       const challengerNames = validPlayers.map(id => athletes.find(a => a.id === id)?.name || id).join(', ');
 
       if (ruleTriggered) {
-        await showAlert(`Regra de vitórias consecutivas ATIVADA: O time vencedor venceu ${consecutiveWins} partidas consecutivas (limite: ${limit}). Portanto, o time DERROTADO permanece em quadra!\n\nTime que permanece: ${winnerNames}\n\nPróxima equipe desafiante (Equipe #1): ${challengerNames}`, 'Partida Gerada!', 'info');
+        await showAlert(`Regra de vitórias consecutivas ATIVADA: O time vencedor venceu ${consecutiveWins} partidas consecutivas (limite: ${limit}). Portanto, o time DERROTADO permanece em quadra!\n\nTime que permanece: ${winnerNames}\n\nPróxima equipe desafiante (Equipe #${teamIdx + 1}): ${challengerNames}`, 'Partida Gerada!', 'info');
       } else {
-        await showAlert(`O time vencedor permanece em quadra (vitórias seguidas: ${consecutiveWins}/${limit}).\n\nTime que permanece: ${winnerNames}\n\nPróxima equipe desafiante (Equipe #1): ${challengerNames}`, 'Partida Gerada!', 'info');
+        await showAlert(`O time vencedor permanece em quadra (vitórias seguidas: ${consecutiveWins}/${limit}).\n\nTime que permanece: ${winnerNames}\n\nPróxima equipe desafiante (Equipe #${teamIdx + 1}): ${challengerNames}`, 'Partida Gerada!', 'info');
       }
     }
 
     try {
+      const nextMatchNumber = matches.reduce((max, m) => Math.max(max, m.matchNumber || 0), 0) + 1;
       await addDoc(collection(db, 'matches'), {
         date: Date.now(),
         blueTeam: blueTeamSelected,
@@ -511,18 +676,20 @@ export default function AdminMatches() {
         blueScore: 0,
         yellowScore: 0,
         status: 'scheduled',
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        matchNumber: nextMatchNumber
       });
 
       // Shift nextTeams queue
       let updatedTeams: string[][] = [[], [], []];
       if (isTwoTeamsConsumed) {
-        const team3 = nextTeams[2] || [];
-        updatedTeams = [team3, ['', '', ''], ['', '', '']];
+        const remainingIndices = [0, 1, 2].filter(idx => idx !== teamIdx && idx !== otherTeamIdx);
+        const remainingTeams = remainingIndices.map(idx => nextTeams[idx] || []);
+        updatedTeams = [...remainingTeams, ['', '', ''], ['', '', '']].slice(0, 3);
       } else {
-        const team2 = nextTeams[1] || [];
-        const team3 = nextTeams[2] || [];
-        updatedTeams = [team2, team3, ['', '', '']];
+        const remainingIndices = [0, 1, 2].filter(idx => idx !== teamIdx);
+        const remainingTeams = remainingIndices.map(idx => nextTeams[idx] || []);
+        updatedTeams = [...remainingTeams, ['', '', '']].slice(0, 3);
       }
 
       // Automatically fill empty slot from remaining queue of today
@@ -563,7 +730,7 @@ export default function AdminMatches() {
            const filtered = dailyAthleteIds.filter(id => !leftAthletes.includes(id));
            const newDailyIds = [...filtered, ...leftAthletes];
            setDailyAthleteIds(newDailyIds);
-           await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: newDailyIds });
+            await saveDailyAthletes(newDailyIds);
          }
       }
     } catch (err) {
@@ -643,49 +810,46 @@ export default function AdminMatches() {
           {[0, 1, 2].map((teamIdx) => {
             const team = nextTeams[teamIdx] || ['', '', ''];
             return (
-              <div key={`next-team-card-${teamIdx}`} className="bg-white rounded-xl border border-gray-200/60 p-4 shadow-xs flex flex-col space-y-3">
-                <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                  <span className="text-xs font-extrabold text-indigo-700 uppercase tracking-wider">
-                    Equipe Desafiante #{teamIdx + 1}
-                  </span>
-                  <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full">
-                    Trio #{teamIdx + 1}
-                  </span>
+              <div key={`next-team-card-${teamIdx}`} className="bg-white rounded-xl border border-gray-200/60 p-4 shadow-sm flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex justify-between items-center border-b border-gray-50 pb-2 mb-3">
+                    <span className="text-xs font-extrabold text-indigo-700 uppercase tracking-wider">
+                      Equipe Desafiante #{teamIdx + 1}
+                    </span>
+                    <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full">
+                      Trio #{teamIdx + 1}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[0, 1, 2].map((playerIdx) => {
+                      const selectedId = team[playerIdx] || '';
+                      return (
+                        <div key={`player-${teamIdx}-${playerIdx}`} className="space-y-1">
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">
+                            Atleta {playerIdx + 1}
+                          </label>
+                          <AthleteAutocomplete
+                            selectedId={selectedId}
+                            onChange={(id) => updateNextTeamPlayer(teamIdx, playerIdx, id)}
+                            athletes={athletes}
+                            dailyAthleteIds={dailyAthleteIds}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="space-y-2.5">
-                  {[0, 1, 2].map((playerIdx) => {
-                    const selectedId = team[playerIdx] || '';
-                    const selectedAthlete = athletes.find(a => a.id === selectedId);
-                    return (
-                      <div key={`player-${teamIdx}-${playerIdx}`} className="space-y-1">
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase">
-                          Atleta {playerIdx + 1}
-                        </label>
-                        <div className="flex items-center gap-2">
-                          {selectedAthlete?.photoUrl ? (
-                            <img src={selectedAthlete.photoUrl} className="w-6 h-6 rounded-full object-cover shrink-0 border border-gray-100" alt="" />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-bold shrink-0">
-                              {selectedAthlete ? selectedAthlete.name.charAt(0) : '?'}
-                            </div>
-                          )}
-                          <select
-                            value={selectedId}
-                            onChange={(e) => updateNextTeamPlayer(teamIdx, playerIdx, e.target.value)}
-                            className="w-full text-xs border border-gray-200 rounded-lg p-1 bg-gray-50 hover:bg-gray-100 font-medium transition-colors focus:ring-1 focus:ring-indigo-500"
-                          >
-                            <option value="">-- Selecionar --</option>
-                            {athletes
-                              .filter(a => dailyAthleteIds.includes(a.id))
-                              .map(a => (
-                                <option key={a.id} value={a.id}>{a.name}</option>
-                              ))}
-                          </select>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="pt-2 border-t border-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => startNextMatchWithTeam(teamIdx)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-2 px-3 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all text-xs uppercase tracking-wide cursor-pointer"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    Iniciar Próxima Partida
+                  </button>
                 </div>
               </div>
             );
@@ -695,8 +859,8 @@ export default function AdminMatches() {
         <div className="pt-2 flex justify-center">
           <button
             type="button"
-            onClick={startNextMatchWithTeam1}
-            className="w-full max-w-md bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-6 rounded-xl shadow-md shadow-emerald-200 flex items-center justify-center gap-2.5 transition-all text-sm uppercase tracking-wide"
+            onClick={() => startNextMatchWithTeam(0)}
+            className="w-full max-w-md bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-6 rounded-xl shadow-md shadow-emerald-200 flex items-center justify-center gap-2.5 transition-all text-sm uppercase tracking-wide cursor-pointer"
           >
             <PlayCircle className="h-5 w-5" />
             Iniciar Próxima Partida com Equipe #1
@@ -715,7 +879,7 @@ export default function AdminMatches() {
               <li key={match.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-500 mb-1">
-                    {format(new Date(match.date), "dd/MM/yyyy", { locale: ptBR })} - Status: <span className="font-bold">{
+                    {format(getLocalDate(match.date), "dd/MM/yyyy", { locale: ptBR })} - Status: <span className="font-bold">{
                       match.status === 'in_progress' ? 'Ao Vivo' : match.status === 'completed' ? 'Finalizada' : 'Agendada'
                     }</span>
                   </p>
@@ -1166,7 +1330,7 @@ export default function AdminMatches() {
                         const confirmed = await showConfirm("Deseja mesmo limpar toda a lista de presença?", "Limpar Lista", "warning");
                         if (confirmed) {
                           setDailyAthleteIds([]);
-                          await setDoc(doc(db, 'config', 'present_athletes'), { athleteIds: [] });
+                          await saveDailyAthletes([]);
                         }
                       }}
                       disabled={dailyAthleteIds.length === 0}

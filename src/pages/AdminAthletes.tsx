@@ -204,10 +204,20 @@ export default function AdminAthletes() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    const isDuplicate = athletes.some(ath => 
+      ath.name.toLowerCase() === trimmedName.toLowerCase() && ath.id !== editingId
+    );
+
+    if (isDuplicate) {
+      await showAlert(`Já existe um atleta cadastrado com o nome "${trimmedName}".`, 'Atleta Duplicado', 'warning');
+      return;
+    }
 
     const data = {
-      name: name.trim(),
+      name: trimmedName,
       photoUrl,
       birthDate,
       gender: gender || null,

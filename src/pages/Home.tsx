@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getLocalDate } from '../lib/utils';
 import { Athlete, Match } from '../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -204,10 +205,12 @@ export default function Home() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600"></span>
                 </span>
-                <span className="text-sm font-black uppercase tracking-wider text-red-600">Partida ao Vivo 🔴</span>
+                <span className="text-sm font-black uppercase tracking-wider text-red-600">
+                  {liveMatch.matchNumber ? `Partida #${liveMatch.matchNumber} ao Vivo 🔴` : 'Partida ao Vivo 🔴'}
+                </span>
               </div>
               <span className="text-xs font-semibold text-gray-500">
-                {format(new Date(liveMatch.date), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                {format(getLocalDate(liveMatch.date), "dd 'de' MMMM, yyyy", { locale: ptBR })}
               </span>
             </div>
 
@@ -280,65 +283,116 @@ export default function Home() {
           {displayMatches.length === 0 ? (
             <p className="text-gray-500 col-span-full">Nenhuma partida registrada ainda.</p>
           ) : (
-            displayMatches.map(match => (
-              <Link to={`/match/${match.id}`} key={match.id} className="block group">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative">
-                  {match.status === 'in_progress' && (
-                    <div className="absolute top-0 inset-x-0 h-1 bg-red-500 animate-pulse"></div>
-                  )}
-                  <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center text-sm">
-                    <span className="text-gray-500 font-medium">
-                      {format(new Date(match.date), "dd 'de' MMMM, yyyy", { locale: ptBR })}
-                    </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      match.status === 'in_progress' ? 'bg-red-100 text-red-700' :
-                      match.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      'bg-gray-200 text-gray-700'
-                    }`}>
-                      {match.status === 'in_progress' ? 'Ao Vivo' : match.status === 'completed' ? 'Finalizada' : 'Agendada'}
-                    </span>
-                  </div>
-                  
-                  <div className="p-6 flex items-center justify-between">
-                    <div className="flex-1 text-center">
-                      <div className="text-3xl font-black text-blue-600 mb-2">
-                        {match.blueScore}
-                        {match.blueScore === 9 && match.yellowScore === 9 && match.blueTiebreakScore !== undefined && (
-                          <span className="text-sm font-bold text-blue-400 ml-1">({match.blueTiebreakScore})</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Time Azul</div>
-                      <div className="flex flex-col space-y-1">
-                        {match.blueTeam.map(id => (
-                          <span key={id} className="text-sm font-medium text-gray-800 truncate" title={athletes[id]?.name || 'Desconhecido'}>
-                            {athletes[id]?.name || '...'}
+            displayMatches.map(match => {
+              const isCompleted = match.status === 'completed';
+              let winner: 'blue' | 'yellow' | null = null;
+              if (isCompleted) {
+                const bScore = match.blueScore;
+                const yScore = match.yellowScore;
+                const bTb = match.blueTiebreakScore || 0;
+                const yTb = match.yellowTiebreakScore || 0;
+                if ((bScore >= 7 && yScore === 0) || (yScore >= 7 && bScore === 0)) {
+                  winner = bScore > yScore ? 'blue' : 'yellow';
+                } else if (bScore === 9 && yScore === 9) {
+                  winner = bTb >= 3 ? 'blue' : (yTb >= 3 ? 'yellow' : (bTb > yTb ? 'blue' : 'yellow'));
+                } else {
+                  winner = bScore > yScore ? 'blue' : 'yellow';
+                }
+              }
+
+              return (
+                <Link to={`/match/${match.id}`} key={match.id} className="block group">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative">
+                    {match.status === 'in_progress' && (
+                      <div className="absolute top-0 inset-x-0 h-1 bg-red-500 animate-pulse"></div>
+                    )}
+                    <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-1.5">
+                        {match.matchNumber && (
+                          <span className="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-sm">
+                            Partida #{match.matchNumber}
                           </span>
-                        ))}
+                        )}
+                        <span className="text-gray-500 font-medium text-xs">
+                          {format(getLocalDate(match.date), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
                       </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                        match.status === 'in_progress' ? 'bg-red-100 text-red-700' :
+                        match.status === 'completed' ? 'bg-green-100 text-green-700' :
+                        'bg-gray-200 text-gray-700'
+                      }`}>
+                        {match.status === 'in_progress' ? 'Ao Vivo' : match.status === 'completed' ? 'Finalizada' : 'Agendada'}
+                      </span>
                     </div>
                     
-                    <div className="px-4 text-gray-300 font-bold text-xl">X</div>
-                    
-                    <div className="flex-1 text-center">
-                      <div className="text-3xl font-black text-yellow-500 mb-2">
-                        {match.yellowScore}
-                        {match.blueScore === 9 && match.yellowScore === 9 && match.yellowTiebreakScore !== undefined && (
-                          <span className="text-sm font-bold text-yellow-600 ml-1">({match.yellowTiebreakScore})</span>
-                        )}
+                    <div className="p-6 flex items-center justify-between">
+                      <div className="flex-1 text-center">
+                        <div className={`text-3xl font-black mb-2 ${
+                          isCompleted 
+                            ? (winner === 'blue' ? 'text-green-600' : 'text-gray-700') 
+                            : 'text-blue-600'
+                        }`}>
+                          {match.blueScore}
+                          {match.blueScore === 9 && match.yellowScore === 9 && match.blueTiebreakScore !== undefined && (
+                            <span className="text-sm font-bold text-blue-400 ml-1">({match.blueTiebreakScore})</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Time Azul</div>
+                        <div className="flex flex-col space-y-1">
+                          {match.blueTeam.map(id => (
+                            <span 
+                              key={id} 
+                              className={`text-sm truncate block ${
+                                isCompleted && winner === 'blue'
+                                  ? 'font-black text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-100'
+                                  : 'font-medium text-gray-800'
+                              }`} 
+                              title={athletes[id]?.name || 'Desconhecido'}
+                            >
+                              {athletes[id]?.name || '...'}
+                              {isCompleted && winner === 'blue' && ' 🏆'}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Time Amarelo</div>
-                      <div className="flex flex-col space-y-1">
-                        {match.yellowTeam.map(id => (
-                          <span key={id} className="text-sm font-medium text-gray-800 truncate" title={athletes[id]?.name || 'Desconhecido'}>
-                            {athletes[id]?.name || '...'}
-                          </span>
-                        ))}
+                      
+                      <div className="px-4 text-gray-300 font-bold text-xl">X</div>
+                      
+                      <div className="flex-1 text-center">
+                        <div className={`text-3xl font-black mb-2 ${
+                          isCompleted 
+                            ? (winner === 'yellow' ? 'text-green-600' : 'text-gray-700') 
+                            : 'text-yellow-500'
+                        }`}>
+                          {match.yellowScore}
+                          {match.blueScore === 9 && match.yellowScore === 9 && match.yellowTiebreakScore !== undefined && (
+                            <span className="text-sm font-bold text-yellow-600 ml-1">({match.yellowTiebreakScore})</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Time Amarelo</div>
+                        <div className="flex flex-col space-y-1">
+                          {match.yellowTeam.map(id => (
+                            <span 
+                              key={id} 
+                              className={`text-sm truncate block ${
+                                isCompleted && winner === 'yellow'
+                                  ? 'font-black text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-100'
+                                  : 'font-medium text-gray-800'
+                              }`} 
+                              title={athletes[id]?.name || 'Desconhecido'}
+                            >
+                              {athletes[id]?.name || '...'}
+                              {isCompleted && winner === 'yellow' && ' 🏆'}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))
+                </Link>
+              );
+            })
           )}
         </div>
 

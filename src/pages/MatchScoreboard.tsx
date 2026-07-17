@@ -321,7 +321,9 @@ export default function MatchScoreboard() {
       </div>
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-black text-gray-900">Placar ao Vivo</h1>
+          <h1 className="text-3xl font-black text-gray-900 flex items-center gap-2">
+            Placar ao Vivo {match.matchNumber && <span className="text-blue-600 font-extrabold text-2xl">#{match.matchNumber}</span>}
+          </h1>
           <p className="text-gray-500 font-medium mt-1">
             {match.status === 'scheduled' ? 'Aguardando Início' : 
              match.status === 'in_progress' ? 'Em Andamento' : 'Partida Encerrada'}
@@ -386,110 +388,154 @@ export default function MatchScoreboard() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-row gap-2 sm:gap-4 md:gap-8 items-stretch justify-center">
-        {/* Time Azul */}
-        <div className="flex-1 bg-white rounded-2xl md:rounded-3xl shadow-xl overflow-hidden border-2 md:border-4 border-blue-500 flex flex-col">
-          <div className="bg-blue-600 text-white text-center py-2 md:py-4">
-            <h2 className="text-sm sm:text-lg md:text-2xl font-black tracking-wider md:tracking-widest uppercase">Time Azul</h2>
-          </div>
-          
-          <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 bg-blue-50">
-            <div className="text-5xl sm:text-8xl md:text-[12rem] font-black text-blue-600 leading-none tabular-nums tracking-tighter">
-              {match.blueScore}
-            </div>
-
-            {isTiebreakActive && (
-              <div className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow-inner flex flex-col items-center min-w-[110px] sm:min-w-[140px] border border-blue-400">
-                <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 text-blue-200">Pontos Diretos</span>
-                <span className="text-xl sm:text-3xl font-black tabular-nums">{match.blueTiebreakScore || 0} <span className="text-xs font-normal text-blue-300">/ 3</span></span>
+      {/* Time and Score info setup */}
+      {(() => {
+        const isCompleted = match.status === 'completed';
+        const winner = isCompleted ? (winnerStatus.winner || (match.blueScore > match.yellowScore ? 'blue' : 'yellow')) : null;
+        
+        return (
+          <div className="flex-1 flex flex-row gap-2 sm:gap-4 md:gap-8 items-stretch justify-center">
+            {/* Time Azul */}
+            <div className="flex-1 bg-white rounded-2xl md:rounded-3xl shadow-xl overflow-hidden border-2 md:border-4 border-blue-500 flex flex-col">
+              <div className="bg-blue-600 text-white text-center py-2 md:py-4">
+                <h2 className="text-sm sm:text-lg md:text-2xl font-black tracking-wider md:tracking-widest uppercase">Time Azul</h2>
               </div>
-            )}
-            
-            {isAdmin && match.status !== 'completed' && (
-              <div className="flex gap-2 md:gap-4 mt-4 md:mt-8">
-                <button onClick={() => updateScore('blue', -1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-white text-blue-600 border border-blue-200 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm shrink-0">
-                  <Minus className="h-5 w-5 md:h-8 md:w-8" />
-                </button>
-                <button onClick={() => updateScore('blue', 1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors shadow-md shrink-0">
-                  <Plus className="h-5 w-5 md:h-8 md:w-8" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white p-3 md:p-6 border-t border-blue-100">
-            <h3 className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 md:mb-4 text-center">Atletas</h3>
-            <div className="flex justify-center gap-2 sm:gap-4 md:gap-6 flex-wrap">
-              {match.blueTeam.map(id => (
-                <div key={id} className="flex flex-col items-center text-center max-w-[70px] md:max-w-[100px]">
-                  {athletes[id]?.photoUrl ? (
-                    <img src={athletes[id].photoUrl} className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full object-cover border border-blue-200 mb-1 md:mb-2 shadow-sm" alt="" />
-                  ) : (
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full bg-blue-100 text-blue-600 border border-blue-200 flex items-center justify-center text-sm md:text-xl font-bold mb-1 md:mb-2 shadow-sm shrink-0">
-                      {athletes[id]?.name?.charAt(0) || '?'}
-                    </div>
-                  )}
-                  <span className="font-bold text-gray-800 text-[10px] sm:text-xs md:text-sm truncate w-full">{athletes[id]?.name || '...'}</span>
+              
+              <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 bg-blue-50">
+                <div className={`text-4xl sm:text-6xl md:text-[8rem] font-black leading-none tabular-nums tracking-tighter ${
+                  isCompleted 
+                    ? (winner === 'blue' ? 'text-green-600' : 'text-gray-700') 
+                    : 'text-blue-600'
+                }`}>
+                  {match.blueScore}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Separator */}
-        <div className="flex items-center justify-center px-1 sm:px-2 md:px-4">
-          <span className="text-xl sm:text-4xl md:text-6xl font-black text-gray-300">X</span>
-        </div>
-
-        {/* Time Amarelo */}
-        <div className="flex-1 bg-white rounded-2xl md:rounded-3xl shadow-xl overflow-hidden border-2 md:border-4 border-yellow-400 flex flex-col">
-          <div className="bg-yellow-400 text-yellow-900 text-center py-2 md:py-4">
-            <h2 className="text-sm sm:text-lg md:text-2xl font-black tracking-wider md:tracking-widest uppercase">Time Amarelo</h2>
-          </div>
-          
-          <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 bg-yellow-50">
-            <div className="text-5xl sm:text-8xl md:text-[12rem] font-black text-yellow-500 leading-none tabular-nums tracking-tighter">
-              {match.yellowScore}
-            </div>
-
-            {isTiebreakActive && (
-              <div className="mt-2 px-4 py-2 bg-yellow-500 text-yellow-950 rounded-xl shadow-inner flex flex-col items-center min-w-[110px] sm:min-w-[140px] border border-yellow-400">
-                <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 text-yellow-900/80">Pontos Diretos</span>
-                <span className="text-xl sm:text-3xl font-black tabular-nums">{match.yellowTiebreakScore || 0} <span className="text-xs font-normal text-yellow-800">/ 3</span></span>
+                {isTiebreakActive && (
+                  <div className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow-inner flex flex-col items-center min-w-[110px] sm:min-w-[140px] border border-blue-400">
+                    <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 text-blue-200">Pontos Diretos</span>
+                    <span className="text-xl sm:text-3xl font-black tabular-nums">{match.blueTiebreakScore || 0} <span className="text-xs font-normal text-blue-300">/ 3</span></span>
+                  </div>
+                )}
+                
+                {isAdmin && match.status !== 'completed' && (
+                  <div className="flex gap-2 md:gap-4 mt-4 md:mt-8">
+                    <button onClick={() => updateScore('blue', -1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-white text-blue-600 border border-blue-200 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm shrink-0">
+                      <Minus className="h-5 w-5 md:h-8 md:w-8" />
+                    </button>
+                    <button onClick={() => updateScore('blue', 1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors shadow-md shrink-0">
+                      <Plus className="h-5 w-5 md:h-8 md:w-8" />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-            
-            {isAdmin && match.status !== 'completed' && (
-              <div className="flex gap-2 md:gap-4 mt-4 md:mt-8">
-                <button onClick={() => updateScore('yellow', -1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-white text-yellow-600 border border-yellow-200 flex items-center justify-center hover:bg-yellow-100 transition-colors shadow-sm shrink-0">
-                  <Minus className="h-5 w-5 md:h-8 md:w-8" />
-                </button>
-                <button onClick={() => updateScore('yellow', 1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-yellow-500 text-white flex items-center justify-center hover:bg-yellow-600 transition-colors shadow-md shrink-0">
-                  <Plus className="h-5 w-5 md:h-8 md:w-8" />
-                </button>
-              </div>
-            )}
-          </div>
 
-          <div className="bg-white p-3 md:p-6 border-t border-yellow-100">
-            <h3 className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 md:mb-4 text-center">Atletas</h3>
-            <div className="flex justify-center gap-2 sm:gap-4 md:gap-6 flex-wrap">
-              {match.yellowTeam.map(id => (
-                <div key={id} className="flex flex-col items-center text-center max-w-[70px] md:max-w-[100px]">
-                  {athletes[id]?.photoUrl ? (
-                    <img src={athletes[id].photoUrl} className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full object-cover border border-yellow-200 mb-1 md:mb-2 shadow-sm" alt="" />
-                  ) : (
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full bg-yellow-100 text-yellow-600 border border-yellow-200 flex items-center justify-center text-sm md:text-xl font-bold mb-1 md:mb-2 shadow-sm shrink-0">
-                      {athletes[id]?.name?.charAt(0) || '?'}
-                    </div>
-                  )}
-                  <span className="font-bold text-gray-800 text-[10px] sm:text-xs md:text-sm truncate w-full">{athletes[id]?.name || '...'}</span>
+              <div className="bg-white p-3 md:p-6 border-t border-blue-100">
+                <h3 className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 md:mb-4 text-center">Atletas</h3>
+                <div className="flex justify-center gap-4 sm:gap-6 md:gap-8 flex-wrap">
+                  {match.blueTeam.map(id => {
+                    const isWinner = isCompleted && winner === 'blue';
+                    return (
+                      <div key={id} className={`flex flex-col items-center text-center max-w-[90px] md:max-w-[140px] p-2 rounded-xl transition-all ${
+                        isWinner ? 'bg-green-50 border border-green-200 shadow-sm scale-105' : ''
+                      }`}>
+                        {athletes[id]?.photoUrl ? (
+                          <img src={athletes[id].photoUrl} className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full object-cover mb-2 md:mb-3 shadow-sm ${
+                            isWinner ? 'border-2 border-green-500' : 'border border-blue-200'
+                          }`} alt="" />
+                        ) : (
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-sm md:text-xl font-bold mb-2 md:mb-3 shadow-sm shrink-0 ${
+                            isWinner ? 'bg-green-100 text-green-700 border-2 border-green-500' : 'bg-blue-100 text-blue-600 border border-blue-200'
+                          }`}>
+                            {athletes[id]?.name?.charAt(0) || '?'}
+                          </div>
+                        )}
+                        <span className={`font-black truncate w-full flex items-center justify-center gap-1 ${
+                          isWinner ? 'text-green-800 text-xs sm:text-sm md:text-base' : 'text-gray-800 text-xs sm:text-sm md:text-base'
+                        }`}>
+                          {athletes[id]?.name || '...'}
+                          {isWinner && <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 shrink-0" />}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className="flex items-center justify-center px-1 sm:px-2 md:px-4">
+              <span className="text-xl sm:text-4xl md:text-6xl font-black text-gray-300">X</span>
+            </div>
+
+            {/* Time Amarelo */}
+            <div className="flex-1 bg-white rounded-2xl md:rounded-3xl shadow-xl overflow-hidden border-2 md:border-4 border-yellow-400 flex flex-col">
+              <div className="bg-yellow-400 text-yellow-900 text-center py-2 md:py-4">
+                <h2 className="text-sm sm:text-lg md:text-2xl font-black tracking-wider md:tracking-widest uppercase">Time Amarelo</h2>
+              </div>
+              
+              <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 bg-yellow-50">
+                <div className={`text-4xl sm:text-6xl md:text-[8rem] font-black leading-none tabular-nums tracking-tighter ${
+                  isCompleted 
+                    ? (winner === 'yellow' ? 'text-green-600' : 'text-gray-700') 
+                    : 'text-yellow-500'
+                }`}>
+                  {match.yellowScore}
+                </div>
+
+                {isTiebreakActive && (
+                  <div className="mt-2 px-4 py-2 bg-yellow-500 text-yellow-950 rounded-xl shadow-inner flex flex-col items-center min-w-[110px] sm:min-w-[140px] border border-yellow-400">
+                    <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 text-yellow-900/80">Pontos Diretos</span>
+                    <span className="text-xl sm:text-3xl font-black tabular-nums">{match.yellowTiebreakScore || 0} <span className="text-xs font-normal text-yellow-800">/ 3</span></span>
+                  </div>
+                )}
+                
+                {isAdmin && match.status !== 'completed' && (
+                  <div className="flex gap-2 md:gap-4 mt-4 md:mt-8">
+                    <button onClick={() => updateScore('yellow', -1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-white text-yellow-600 border border-yellow-200 flex items-center justify-center hover:bg-yellow-100 transition-colors shadow-sm shrink-0">
+                      <Minus className="h-5 w-5 md:h-8 md:w-8" />
+                    </button>
+                    <button onClick={() => updateScore('yellow', 1)} className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-yellow-500 text-white flex items-center justify-center hover:bg-yellow-600 transition-colors shadow-md shrink-0">
+                      <Plus className="h-5 w-5 md:h-8 md:w-8" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white p-3 md:p-6 border-t border-yellow-100">
+                <h3 className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 md:mb-4 text-center">Atletas</h3>
+                <div className="flex justify-center gap-4 sm:gap-6 md:gap-8 flex-wrap">
+                  {match.yellowTeam.map(id => {
+                    const isWinner = isCompleted && winner === 'yellow';
+                    return (
+                      <div key={id} className={`flex flex-col items-center text-center max-w-[90px] md:max-w-[140px] p-2 rounded-xl transition-all ${
+                        isWinner ? 'bg-green-50 border border-green-200 shadow-sm scale-105' : ''
+                      }`}>
+                        {athletes[id]?.photoUrl ? (
+                          <img src={athletes[id].photoUrl} className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full object-cover mb-2 md:mb-3 shadow-sm ${
+                            isWinner ? 'border-2 border-green-500' : 'border border-yellow-200'
+                          }`} alt="" />
+                        ) : (
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-sm md:text-xl font-bold mb-2 md:mb-3 shadow-sm shrink-0 ${
+                            isWinner ? 'bg-green-100 text-green-700 border-2 border-green-500' : 'bg-yellow-100 text-yellow-600 border border-yellow-200'
+                          }`}>
+                            {athletes[id]?.name?.charAt(0) || '?'}
+                          </div>
+                        )}
+                        <span className={`font-black truncate w-full flex items-center justify-center gap-1 ${
+                          isWinner ? 'text-green-800 text-xs sm:text-sm md:text-base' : 'text-gray-800 text-xs sm:text-sm md:text-base'
+                        }`}>
+                          {athletes[id]?.name || '...'}
+                          {isWinner && <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 shrink-0" />}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {showTiebreak && isTiebreakActive && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
