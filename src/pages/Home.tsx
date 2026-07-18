@@ -351,7 +351,6 @@ export default function Home() {
                               title={athletes[id]?.name || 'Desconhecido'}
                             >
                               {athletes[id]?.name || '...'}
-                              {isCompleted && winner === 'blue' && ' 🏆'}
                             </span>
                           ))}
                         </div>
@@ -383,7 +382,6 @@ export default function Home() {
                               title={athletes[id]?.name || 'Desconhecido'}
                             >
                               {athletes[id]?.name || '...'}
-                              {isCompleted && winner === 'yellow' && ' 🏆'}
                             </span>
                           ))}
                         </div>

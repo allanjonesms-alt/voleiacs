@@ -271,7 +271,12 @@ export default function AdminMatches() {
     const unsubNextTeams = onSnapshot(doc(db, 'config', 'next_teams'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data().teams || [];
-        const padded = [...data];
+        const parsed = data.map((item: any) => {
+          if (Array.isArray(item)) return item;
+          if (item && Array.isArray(item.players)) return item.players;
+          return [];
+        });
+        const padded = [...parsed];
         while (padded.length < 3) padded.push([]);
         setNextTeams(padded.slice(0, 3).map(team => {
           const t = [...team];
@@ -504,7 +509,7 @@ export default function AdminMatches() {
     });
     setNextTeams(updated);
     try {
-      await setDoc(doc(db, 'config', 'next_teams'), { teams: updated });
+      await setDoc(doc(db, 'config', 'next_teams'), { teams: updated.map(p => ({ players: p })) });
     } catch (err) {
       console.error('Erro ao atualizar próxima equipe:', err);
     }
@@ -540,7 +545,7 @@ export default function AdminMatches() {
 
     setNextTeams(updated);
     try {
-      await setDoc(doc(db, 'config', 'next_teams'), { teams: updated });
+      await setDoc(doc(db, 'config', 'next_teams'), { teams: updated.map(p => ({ players: p })) });
       await showAlert('As 3 próximas equipes foram preenchidas com os atletas disponíveis da fila de presença!', 'Fila Preenchida', 'success');
     } catch (err) {
       console.error('Erro ao preencher equipes desafiantes:', err);
@@ -553,7 +558,7 @@ export default function AdminMatches() {
       const empty = [['', '', ''], ['', '', ''], ['', '', '']];
       setNextTeams(empty);
       try {
-         await setDoc(doc(db, 'config', 'next_teams'), { teams: empty });
+         await setDoc(doc(db, 'config', 'next_teams'), { teams: empty.map(p => ({ players: p })) });
       } catch (err) {
          console.error('Erro ao limpar equipes desafiantes:', err);
       }
@@ -718,7 +723,7 @@ export default function AdminMatches() {
         }
       }
 
-      await setDoc(doc(db, 'config', 'next_teams'), { teams: updatedTeams });
+      await setDoc(doc(db, 'config', 'next_teams'), { teams: updatedTeams.map(p => ({ players: p })) });
 
       // Rotate players that left the court
       if (completedMatchesOfToday.length > 0) {
