@@ -302,13 +302,17 @@ export default function Home() {
           ) : (
             displayMatches.map(match => {
               const isCompleted = match.status === 'completed';
+              const isLive = match.status === 'in_progress';
+              const isScheduled = match.status === 'scheduled';
               let winner: 'blue' | 'yellow' | null = null;
+              let isSevenZero = false;
               if (isCompleted) {
                 const bScore = match.blueScore;
                 const yScore = match.yellowScore;
                 const bTb = match.blueTiebreakScore || 0;
                 const yTb = match.yellowTiebreakScore || 0;
-                if ((bScore >= 7 && yScore === 0) || (yScore >= 7 && bScore === 0)) {
+                isSevenZero = (bScore === 7 && yScore === 0) || (yScore === 7 && bScore === 0);
+                if (isSevenZero) {
                   winner = bScore > yScore ? 'blue' : 'yellow';
                 } else if (bScore === 9 && yScore === 9) {
                   winner = bTb >= 3 ? 'blue' : (yTb >= 3 ? 'yellow' : (bTb > yTb ? 'blue' : 'yellow'));
@@ -318,91 +322,150 @@ export default function Home() {
               }
 
               return (
-                <Link to={`/match/${match.id}`} key={match.id} className="block group">
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative">
-                    {match.status === 'in_progress' && (
+                <Link to={`/match/${match.id}`} key={match.id} className="block group transition-all duration-300 hover:-translate-y-1">
+                  <div className={`bg-white rounded-2xl shadow-sm border transition-all duration-300 hover:shadow-md overflow-hidden relative h-full flex flex-col ${
+                    isLive ? 'border-red-200 ring-2 ring-red-500/10 shadow-red-50/50' : 
+                    isCompleted ? 'border-gray-100 hover:border-gray-200/80' :
+                    'border-gray-100/80 bg-gray-50/20'
+                  }`}>
+                    {isLive && (
                       <div className="absolute top-0 inset-x-0 h-1 bg-red-500 animate-pulse"></div>
                     )}
-                    <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center text-sm">
+                    <div className="px-5 py-3 border-b border-gray-100/70 bg-gray-50/50 flex justify-between items-center">
                       <div className="flex items-center gap-1.5">
                         {getMatchDisplayNumber(match) && (
-                          <span className="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-sm">
-                            Partida #{getMatchDisplayNumber(match)}
+                          <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider uppercase">
+                            PARTIDA #{getMatchDisplayNumber(match)}
                           </span>
                         )}
-                        <span className="text-gray-500 font-medium text-xs">
+                        <span className="text-gray-400 font-semibold text-xs">
                           {format(getLocalDate(match.date), "dd/MM/yyyy", { locale: ptBR })}
                         </span>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        match.status === 'in_progress' ? 'bg-red-100 text-red-700' :
-                        match.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        'bg-gray-200 text-gray-700'
-                      }`}>
-                        {match.status === 'in_progress' ? 'Ao Vivo' : match.status === 'completed' ? 'Finalizada' : 'Agendada'}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {isLive && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase ${
+                          isLive ? 'bg-red-50 text-red-600 border border-red-100' :
+                          isCompleted ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {isLive ? 'Ao Vivo' : isCompleted ? 'Finalizada' : 'Agendada'}
+                        </span>
+                      </div>
                     </div>
                     
-                    <div className="p-6 flex items-center justify-between">
-                      <div className="flex-1 text-center">
-                        <div className={`text-3xl font-black mb-2 ${
-                          isCompleted 
-                            ? (winner === 'blue' ? 'text-green-600' : 'text-gray-700') 
-                            : 'text-blue-600'
-                        }`}>
-                          {match.blueScore}
-                          {match.blueScore === 9 && match.yellowScore === 9 && match.blueTiebreakScore !== undefined && (
-                            <span className="text-sm font-bold text-blue-400 ml-1">({match.blueTiebreakScore})</span>
+                    <div className="p-5 flex flex-col justify-between flex-1 gap-4">
+                      <div className="flex items-start justify-between gap-1">
+                        {/* Blue Team */}
+                        <div className="flex-1 flex flex-col items-center min-w-0">
+                          <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider mb-3 border truncate max-w-full ${
+                            isCompleted && winner === 'blue'
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-100'
+                              : 'bg-blue-50 text-blue-700 border-blue-100'
+                          }`}>
+                            Time Azul
+                          </div>
+                          
+                          <div className="flex flex-col items-center gap-1 w-full">
+                            {match.blueTeam.map(id => {
+                              const athlete = athletes[id];
+                              const isWinnerPlayer = isCompleted && winner === 'blue';
+                              return (
+                                <span 
+                                  key={id} 
+                                  className={`text-xs max-w-full truncate px-2 py-0.5 rounded-md text-center transition-all w-full block ${
+                                    isWinnerPlayer
+                                      ? 'font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-100/50'
+                                      : 'text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                  title={athlete?.name || 'Desconhecido'}
+                                >
+                                  {athlete?.name || '...'}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Middle Scoreboard */}
+                        <div className="flex flex-col items-center justify-center px-2 shrink-0 min-w-[70px] pt-1">
+                          {isScheduled ? (
+                            <div className="text-xs font-black text-gray-300 tracking-widest uppercase py-3">VS</div>
+                          ) : (
+                            <div className="flex flex-col items-center">
+                              <div className="flex items-baseline justify-center gap-1">
+                                <span className={`text-2xl font-black tracking-tight ${
+                                  isCompleted 
+                                    ? (winner === 'blue' ? 'text-emerald-600 scale-110 font-black' : 'text-gray-400') 
+                                    : 'text-blue-600'
+                                }`}>
+                                  {match.blueScore}
+                                </span>
+                                <span className="text-gray-300 font-bold text-xs select-none px-1">:</span>
+                                <span className={`text-2xl font-black tracking-tight ${
+                                  isCompleted 
+                                    ? (winner === 'yellow' ? 'text-emerald-600 scale-110 font-black' : 'text-gray-400') 
+                                    : 'text-yellow-500'
+                                }`}>
+                                  {match.yellowScore}
+                                </span>
+                              </div>
+                              
+                              {/* Tiebreak details */}
+                              {match.blueScore === 9 && match.yellowScore === 9 && (match.blueTiebreakScore !== undefined || match.yellowTiebreakScore !== undefined) && (
+                                <div className="text-[8px] font-bold text-gray-500 mt-1 bg-gray-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                  TB: {match.blueTiebreakScore || 0} - {match.yellowTiebreakScore || 0}
+                                </div>
+                              )}
+
+                              {isSevenZero && (
+                                <div className="text-[8px] font-black text-amber-600 mt-1 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse whitespace-nowrap">
+                                  ⚡ Lavada
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
-                        <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Time Azul</div>
-                        <div className="flex flex-col space-y-1">
-                          {match.blueTeam.map(id => (
-                            <span 
-                              key={id} 
-                              className={`text-sm truncate block ${
-                                isCompleted && winner === 'blue'
-                                  ? 'font-black text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-100'
-                                  : 'font-medium text-gray-800'
-                              }`} 
-                              title={athletes[id]?.name || 'Desconhecido'}
-                            >
-                              {athletes[id]?.name || '...'}
-                            </span>
-                          ))}
+
+                        {/* Yellow Team */}
+                        <div className="flex-1 flex flex-col items-center min-w-0">
+                          <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider mb-3 border truncate max-w-full ${
+                            isCompleted && winner === 'yellow'
+                              ? 'bg-yellow-500 text-black border-yellow-500 shadow-sm shadow-yellow-100'
+                              : 'bg-yellow-50 text-yellow-700 border-yellow-100'
+                          }`}>
+                            Time Amarelo
+                          </div>
+                          
+                          <div className="flex flex-col items-center gap-1 w-full">
+                            {match.yellowTeam.map(id => {
+                              const athlete = athletes[id];
+                              const isWinnerPlayer = isCompleted && winner === 'yellow';
+                              return (
+                                <span 
+                                  key={id} 
+                                  className={`text-xs max-w-full truncate px-2 py-0.5 rounded-md text-center transition-all w-full block ${
+                                    isWinnerPlayer
+                                      ? 'font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-100/50'
+                                      : 'text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                  title={athlete?.name || 'Desconhecido'}
+                                >
+                                  {athlete?.name || '...'}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="px-4 text-gray-300 font-bold text-xl">X</div>
-                      
-                      <div className="flex-1 text-center">
-                        <div className={`text-3xl font-black mb-2 ${
-                          isCompleted 
-                            ? (winner === 'yellow' ? 'text-green-600' : 'text-gray-700') 
-                            : 'text-yellow-500'
-                        }`}>
-                          {match.yellowScore}
-                          {match.blueScore === 9 && match.yellowScore === 9 && match.yellowTiebreakScore !== undefined && (
-                            <span className="text-sm font-bold text-yellow-600 ml-1">({match.yellowTiebreakScore})</span>
-                          )}
+
+                      {/* Footer Winner Notification */}
+                      {isCompleted && (
+                        <div className="border-t border-gray-50 pt-2 flex items-center justify-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50/40 py-1 rounded-lg">
+                          <Trophy className="h-3 w-3 shrink-0" />
+                          <span>Vitória do Time {winner === 'blue' ? 'Azul' : 'Amarelo'}!</span>
                         </div>
-                        <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Time Amarelo</div>
-                        <div className="flex flex-col space-y-1">
-                          {match.yellowTeam.map(id => (
-                            <span 
-                              key={id} 
-                              className={`text-sm truncate block ${
-                                isCompleted && winner === 'yellow'
-                                  ? 'font-black text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-100'
-                                  : 'font-medium text-gray-800'
-                              }`} 
-                              title={athletes[id]?.name || 'Desconhecido'}
-                            >
-                              {athletes[id]?.name || '...'}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </Link>
