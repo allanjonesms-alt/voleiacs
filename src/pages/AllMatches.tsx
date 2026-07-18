@@ -204,7 +204,6 @@ export default function AllMatches() {
                                   title={athletes[id]?.name || 'Atleta'}
                                 >
                                   {athletes[id]?.name || '...'}
-                                  {isCompleted && winner === 'blue' && ' 🏆'}
                                 </span>
                               ))}
                             </div>
@@ -237,7 +236,6 @@ export default function AllMatches() {
                                   title={athletes[id]?.name || 'Atleta'}
                                 >
                                   {athletes[id]?.name || '...'}
-                                  {isCompleted && winner === 'yellow' && ' 🏆'}
                                 </span>
                               ))}
                             </div>
