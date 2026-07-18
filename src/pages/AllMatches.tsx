@@ -15,6 +15,17 @@ export default function AllMatches() {
   const [searchParams, setSearchParams] = useSearchParams();
   const athleteFilter = searchParams.get('athlete');
 
+  const getMatchDisplayNumber = (match: Match) => {
+    if (match.matchNumber) return match.matchNumber;
+    const sortedAsc = [...matches].sort((a, b) => {
+      const timeA = a.createdAt || a.date || 0;
+      const timeB = b.createdAt || b.date || 0;
+      return timeA - timeB;
+    });
+    const idx = sortedAsc.findIndex(m => m.id === match.id);
+    return idx !== -1 ? idx + 1 : undefined;
+  };
+
   useEffect(() => {
     // Fetch all athletes for reference
     const fetchAthletes = async () => {
@@ -30,13 +41,25 @@ export default function AllMatches() {
     fetchAthletes();
 
     // Listen to matches
-    const qMatches = query(collection(db, 'matches'), orderBy('createdAt', 'desc'));
+    const qMatches = collection(db, 'matches');
     const unsubscribeMatches = onSnapshot(qMatches, (snapshot) => {
       const matchesData: Match[] = [];
       snapshot.forEach(doc => {
         matchesData.push({ id: doc.id, ...doc.data() } as Match);
       });
-      setMatches(matchesData);
+      // Sort matches client-side: Live (in_progress) first, then Scheduled (scheduled) descending, then Completed (completed) descending
+      const sortedMatches = matchesData.sort((a, b) => {
+        if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
+        if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
+
+        if (a.status === 'scheduled' && b.status === 'completed') return -1;
+        if (a.status === 'completed' && b.status === 'scheduled') return 1;
+
+        const timeA = a.createdAt || a.date || 0;
+        const timeB = b.createdAt || b.date || 0;
+        return timeB - timeA;
+      });
+      setMatches(sortedMatches);
       setLoading(false);
     });
 
@@ -160,9 +183,9 @@ export default function AllMatches() {
                         
                         <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center text-xs">
                           <div className="flex items-center gap-1.5">
-                            {match.matchNumber && (
+                            {getMatchDisplayNumber(match) && (
                               <span className="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-sm">
-                                Partida #{match.matchNumber}
+                                Partida #{getMatchDisplayNumber(match)}
                               </span>
                             )}
                             <span className="text-gray-400 font-mono text-[10px]">

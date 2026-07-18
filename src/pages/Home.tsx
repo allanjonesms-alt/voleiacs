@@ -48,8 +48,14 @@ export default function Home() {
       snapshot.forEach(doc => {
         matchesData.push({ id: doc.id, ...doc.data() } as Match);
       });
-      // Sort matches client-side descending by createdAt / date
+      // Sort matches client-side: Live (in_progress) first, then Scheduled (scheduled) descending, then Completed (completed) descending
       const sortedMatches = matchesData.sort((a, b) => {
+        if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
+        if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
+
+        if (a.status === 'scheduled' && b.status === 'completed') return -1;
+        if (a.status === 'completed' && b.status === 'scheduled') return 1;
+
         const timeA = a.createdAt || a.date || 0;
         const timeB = b.createdAt || b.date || 0;
         return timeB - timeA;
@@ -174,6 +180,17 @@ export default function Home() {
       .slice(0, 3);
   }, [completedMatches, athletes]);
 
+  const getMatchDisplayNumber = (match: Match) => {
+    if (match.matchNumber) return match.matchNumber;
+    const sortedAsc = [...matches].sort((a, b) => {
+      const timeA = a.createdAt || a.date || 0;
+      const timeB = b.createdAt || b.date || 0;
+      return timeA - timeB;
+    });
+    const idx = sortedAsc.findIndex(m => m.id === match.id);
+    return idx !== -1 ? idx + 1 : undefined;
+  };
+
   if (loading) {
     return <div className="flex justify-center py-12"><Activity className="h-8 w-8 text-blue-600 animate-pulse" /></div>;
   }
@@ -206,7 +223,7 @@ export default function Home() {
                   <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600"></span>
                 </span>
                 <span className="text-sm font-black uppercase tracking-wider text-red-600">
-                  {liveMatch.matchNumber ? `Partida #${liveMatch.matchNumber} ao Vivo 🔴` : 'Partida ao Vivo 🔴'}
+                  {getMatchDisplayNumber(liveMatch) ? `Partida #${getMatchDisplayNumber(liveMatch)} ao Vivo 🔴` : 'Partida ao Vivo 🔴'}
                 </span>
               </div>
               <span className="text-xs font-semibold text-gray-500">
@@ -308,9 +325,9 @@ export default function Home() {
                     )}
                     <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center text-sm">
                       <div className="flex items-center gap-1.5">
-                        {match.matchNumber && (
+                        {getMatchDisplayNumber(match) && (
                           <span className="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-sm">
-                            Partida #{match.matchNumber}
+                            Partida #{getMatchDisplayNumber(match)}
                           </span>
                         )}
                         <span className="text-gray-500 font-medium text-xs">

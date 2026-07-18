@@ -172,6 +172,17 @@ export default function AdminMatches() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const getMatchDisplayNumber = (match: Match) => {
+    if (match.matchNumber) return match.matchNumber;
+    const sortedAsc = [...matches].sort((a, b) => {
+      const timeA = a.createdAt || a.date || 0;
+      const timeB = b.createdAt || b.date || 0;
+      return timeA - timeB;
+    });
+    const idx = sortedAsc.findIndex(m => m.id === match.id);
+    return idx !== -1 ? idx + 1 : undefined;
+  };
   
   // Autocomplete state
   const [blueSearch, setBlueSearch] = useState('');
@@ -226,13 +237,25 @@ export default function AdminMatches() {
     };
     fetchAthletes();
 
-    const q = query(collection(db, 'matches'), orderBy('createdAt', 'desc'));
+    const q = collection(db, 'matches');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data: Match[] = [];
       snapshot.forEach(doc => {
         data.push({ id: doc.id, ...doc.data() } as Match);
       });
-      setMatches(data);
+      // Sort matches: Live (in_progress) first, then Scheduled (scheduled) descending, then Completed (completed) descending
+      const sortedMatches = data.sort((a, b) => {
+        if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
+        if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
+
+        if (a.status === 'scheduled' && b.status === 'completed') return -1;
+        if (a.status === 'completed' && b.status === 'scheduled') return 1;
+
+        const timeA = a.createdAt || a.date || 0;
+        const timeB = b.createdAt || b.date || 0;
+        return timeB - timeA;
+      });
+      setMatches(sortedMatches);
       setLoading(false);
     });
 
@@ -883,10 +906,17 @@ export default function AdminMatches() {
             {matches.map(match => (
               <li key={match.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-500 mb-1">
-                    {format(getLocalDate(match.date), "dd/MM/yyyy", { locale: ptBR })} - Status: <span className="font-bold">{
-                      match.status === 'in_progress' ? 'Ao Vivo' : match.status === 'completed' ? 'Finalizada' : 'Agendada'
-                    }</span>
+                  <p className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2 flex-wrap">
+                    {getMatchDisplayNumber(match) && (
+                      <span className="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-sm">
+                        Partida #{getMatchDisplayNumber(match)}
+                      </span>
+                    )}
+                    <span>
+                      {format(getLocalDate(match.date), "dd/MM/yyyy", { locale: ptBR })} - Status: <span className="font-bold">{
+                        match.status === 'in_progress' ? 'Ao Vivo' : match.status === 'completed' ? 'Finalizada' : 'Agendada'
+                      }</span>
+                    </span>
                   </p>
                   <div className="flex items-center gap-4">
                     <div className="flex-1 bg-blue-50 p-2 rounded border border-blue-100 flex justify-between items-center">
