@@ -1220,7 +1220,7 @@ export default function AdminMatches() {
                   <Users className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Atletas do Dia</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Lista de Presença</h2>
                   <p className="text-xs text-gray-500">Selecione e organize a fila de presença para formar os trios de hoje</p>
                 </div>
               </div>
